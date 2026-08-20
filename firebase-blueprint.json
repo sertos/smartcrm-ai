@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "language": { "type": "string", "enum": ["en", "es"] },
+        "createdAt": { "type": "string", "format": "timestamp" },
+        "updatedAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["email", "name", "language", "createdAt", "updatedAt"]
+    },
+    "lead": {
+      "title": "Lead",
+      "description": "A lead or deal in the CRM pipeline",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "company": { "type": "string" },
+        "position": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "contacted", "negotiation", "won", "lost"] },
+        "score": { "type": "integer" },
+        "value": { "type": "number" },
+        "aiInsights": { "type": "string" },
+        "createdAt": { "type": "string", "format": "timestamp" },
+        "updatedAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "name", "status", "createdAt", "updatedAt"]
+    },
+    "activity": {
+      "title": "Activity",
+      "description": "An activity or meeting summary related to a lead",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "leadId": { "type": "string" },
+        "type": { "type": "string", "enum": ["email", "meeting", "call", "note"] },
+        "description": { "type": "string" },
+        "aiSummary": { "type": "string" },
+        "date": { "type": "string", "format": "timestamp" },
+        "createdAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "leadId", "type", "description", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/user" },
+      "description": "The user's profile information"
+    },
+    "leads/{leadId}": {
+      "schema": { "$ref": "#/entities/lead" },
+      "description": "Leads managed by users"
+    },
+    "activities/{activityId}": {
+      "schema": { "$ref": "#/entities/activity" },
+      "description": "Activities related to leads"
+    }
+  }
+}

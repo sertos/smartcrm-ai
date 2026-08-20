@@ -1,0 +1,11 @@
+{
+  "id": "smartcrm-ai",
+  "name": "Solvra SmartCRM AI",
+  "category": "Ventas y Marketing",
+  "description": "Solvra SmartCRM AI es una plataforma CRM impulsada por inteligencia artificial diseñada para ayudar a empresas y equipos comerciales a gestionar leads, automatizar seguimientos y aumentar ventas de forma eficiente. La aplicación centraliza clientes, oportunidades y actividades comerciales en una interfaz moderna, intuitiva y profesional.\n\nLa plataforma utiliza IA para calificar leads automáticamente, generar emails de seguimiento, resumir reuniones y detectar oportunidades de venta o clientes inactivos. Además, incluye pipelines visuales estilo Kanban, dashboards de métricas comerciales y herramientas colaborativas para equipos de ventas.\n\nFunciones principales:\n- Gestión de leads y oportunidades.\n- Pipeline comercial inteligente.\n- Seguimientos automáticos.\n- Generación de emails con IA.\n- Resúmenes automáticos de reuniones.\n- Dashboard de ventas y métricas.\n- Gestión de tareas y actividades.\n- Soporte multiusuario.\n\nBeneficios:\n- Mejora la organización comercial.\n- Automatiza tareas repetitivas.\n- Aumenta conversiones y seguimiento.\n- Centraliza la información de clientes.\n- Optimiza procesos de ventas con inteligencia artificial.",
+  "downloads": 16,
+  "rating": 4,
+  "reviews": 12,
+  "images": ["1.jpg", "2.jpg", "3.jpg", "4.jpg", "5.jpg", "6.jpg", "7.jpg"],
+  "type": "marketplace"
+}

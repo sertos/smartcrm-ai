@@ -1,0 +1,120 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definition
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isOwner(userId) { return isSignedIn() && userId == request.auth.uid; }
+
+    function isValidUserConfig(data) {
+      return data.keys().hasAll(['email', 'name', 'language', 'createdAt', 'updatedAt']) &&
+             data.keys().size() == 5 &&
+             data.email is string && data.email.size() <= 256 &&
+             data.name is string && data.name.size() <= 128 &&
+             data.language is string && data.language in ['en', 'es'] &&
+             data.createdAt == request.time &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidUserUpdate(data) {
+      return data.email is string && data.email.size() <= 256 &&
+             data.name is string && data.name.size() <= 128 &&
+             data.language is string && data.language in ['en', 'es'] &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidLeadConfig(data) {
+      return data.keys().hasAll(['userId', 'name', 'status', 'createdAt', 'updatedAt']) &&
+             data.keys().size() <= 11 && // optional fields allowed
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() <= 128 &&
+             data.status is string && data.status in ['new', 'contacted', 'negotiation', 'won', 'lost'] &&
+             data.createdAt == request.time &&
+             data.updatedAt == request.time &&
+             data.get('email', '') is string && data.get('email', '').size() <= 256 &&
+             data.get('company', '') is string && data.get('company', '').size() <= 128 &&
+             data.get('position', '') is string && data.get('position', '').size() <= 128 &&
+             data.get('score', 0) is number &&
+             data.get('value', 0) is number &&
+             data.get('aiInsights', '') is string && data.get('aiInsights', '').size() <= 5000;
+    }
+
+    function isValidLeadUpdate(data) {
+      return data.userId == request.auth.uid &&
+             data.name is string && data.name.size() <= 128 &&
+             data.status is string && data.status in ['new', 'contacted', 'negotiation', 'won', 'lost'] &&
+             data.updatedAt == request.time &&
+             data.get('email', '') is string && data.get('email', '').size() <= 256 &&
+             data.get('company', '') is string && data.get('company', '').size() <= 128 &&
+             data.get('position', '') is string && data.get('position', '').size() <= 128 &&
+             data.get('score', 0) is number &&
+             data.get('value', 0) is number &&
+             data.get('aiInsights', '') is string && data.get('aiInsights', '').size() <= 5000;
+    }
+
+    function isValidActivityConfig(data) {
+      return data.keys().hasAll(['userId', 'leadId', 'type', 'description', 'createdAt']) &&
+             data.keys().size() <= 7 &&
+             data.userId == request.auth.uid &&
+             data.leadId is string && data.leadId.size() <= 128 &&
+             data.type is string && data.type in ['email', 'meeting', 'call', 'note'] &&
+             data.description is string && data.description.size() <= 5000 &&
+             data.createdAt == request.time &&
+             data.get('date', request.time) is timestamp &&
+             data.get('aiSummary', '') is string && data.get('aiSummary', '').size() <= 5000;
+    }
+
+    function isValidActivityUpdate(data) {
+      return data.userId == request.auth.uid &&
+             data.leadId is string && data.leadId.size() <= 128 &&
+             data.type is string && data.type in ['email', 'meeting', 'call', 'note'] &&
+             data.description is string && data.description.size() <= 5000 &&
+             data.get('date', request.time) is timestamp &&
+             data.get('aiSummary', '') is string && data.get('aiSummary', '').size() <= 5000;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserConfig(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUserUpdate(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'language', 'updatedAt']);
+    }
+
+    match /leads/{leadId} {
+      allow get: if isOwner(existing().userId) && isValidId(leadId);
+      allow list: if isOwner(existing().userId); 
+      // Note: for list, existing() evaluates resource.data from the query, so resource.data.userId == request.auth.uid
+      
+      allow create: if isOwner(incoming().userId) && isValidId(leadId) && isValidLeadConfig(incoming());
+      allow update: if isOwner(existing().userId) && isOwner(incoming().userId) && isValidId(leadId) && 
+                    isValidLeadUpdate(incoming()) && incoming().userId == existing().userId &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'company', 'position', 'status', 'score', 'value', 'aiInsights', 'updatedAt']);
+      allow delete: if isOwner(existing().userId) && isValidId(leadId);
+    }
+
+    match /activities/{activityId} {
+      allow get: if isOwner(existing().userId) && isValidId(activityId);
+      allow list: if isOwner(existing().userId);
+      
+      allow create: if isOwner(incoming().userId) && isValidId(activityId) && isValidActivityConfig(incoming()) && 
+                    // Ensures the lead exists and belongs to the user
+                    exists(/databases/$(database)/documents/leads/$(incoming().leadId)) &&
+                    get(/databases/$(database)/documents/leads/$(incoming().leadId)).data.userId == request.auth.uid;
+                    
+      allow update: if isOwner(existing().userId) && isOwner(incoming().userId) && isValidId(activityId) && 
+                    isValidActivityUpdate(incoming()) && incoming().userId == existing().userId && incoming().leadId == existing().leadId &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['type', 'description', 'date', 'aiSummary']);
+      allow delete: if isOwner(existing().userId) && isValidId(activityId);
+    }
+  }
+}
