@@ -11,7 +11,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   const toggleLanguage = () => {
-    i18n.changeLanguage(i18n.language === 'en' ? 'es' : 'en');
+    i18n.changeLanguage(i18n.language.startsWith('es') ? 'en' : 'es');
   };
 
   const handleCTA = async () => {
@@ -42,7 +42,7 @@ export default function LandingPage() {
         <div className="flex items-center gap-4">
           <button onClick={toggleLanguage} className="flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-full transition text-sm">
             <Globe size={16} />
-            {i18n.language.toUpperCase() === 'EN' ? '🇺🇸 EN' : '🇪🇸 ES'}
+            {i18n.language.startsWith('es') ? '🇪🇸 ES' : '🇺🇸 EN'}
           </button>
           <button onClick={handleCTA} className="bg-white text-black px-5 py-2 rounded-full font-medium hover:bg-zinc-200 transition text-sm">
             {user ? t('dashboard') : t('login')}
@@ -51,7 +51,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <main className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-32 pb-20">
+      <main className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-24 pb-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -65,12 +65,8 @@ export default function LandingPage() {
             </span>
             {t('slogan')}
           </div>
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
-            {t('hero_title').split(' ').map((word, i) => 
-              word.toUpperCase() === 'AI-POWERED' || word.toUpperCase() === 'IA' ? 
-              <span key={i} className="text-transparent bg-clip-text bg-gradient-to-r from-accent-400 to-brand-400 inline-block px-2">{word}</span> : 
-              word + ' '
-            )}
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-8 leading-tight">
+            {t('hero_title')}
           </h1>
           <p className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
             {t('hero_subtitle')}
@@ -82,11 +78,11 @@ export default function LandingPage() {
         </motion.div>
 
         {/* Features Preview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-32 max-w-6xl w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 max-w-6xl w-full">
           {[
-            { icon: <Activity className="text-accent-400" />, title: "Predictive Lead Scoring" },
-            { icon: <Zap className="text-brand-400" />, title: "Automated Workflows" },
-            { icon: <Cpu className="text-blue-400" />, title: "AI Assistant & Emails" }
+            { icon: <Activity className="text-accent-400" />, title: t('landing_feat_1_title'), desc: t('landing_feat_1_desc') },
+            { icon: <Zap className="text-brand-400" />, title: t('landing_feat_2_title'), desc: t('landing_feat_2_desc') },
+            { icon: <Cpu className="text-blue-400" />, title: t('landing_feat_3_title'), desc: t('landing_feat_3_desc') }
           ].map((feat, idx) => (
              <motion.div 
                key={idx}
@@ -98,8 +94,8 @@ export default function LandingPage() {
                <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center mb-4">
                  {feat.icon}
                </div>
-               <h3 className="font-semibold text-lg mb-2">{feat.title}</h3>
-               <p className="text-zinc-400 text-sm">Experience the future of sales with our deep learning models predicting your next big closure.</p>
+               <h3 className="font-semibold text-lg mb-2 text-white">{feat.title}</h3>
+               <p className="text-zinc-400 text-sm">{feat.desc}</p>
              </motion.div>
           ))}
         </div>
