@@ -3,13 +3,22 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import { initializeApp, getApps } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 dotenv.config();
+
+// Inicializar Firebase Admin para control persistente de la demo
+if (getApps().length === 0) {
+  initializeApp();
+}
+const db = getFirestore();
+const MAX_FREE_QUERIES = 5;
 
 let aiClient: GoogleGenAI | null = null;
 function getAIClient(): GoogleGenAI {
   if (!aiClient) {
-    const key = process.env.GEMINI_API_KEY;
+    const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     if (!key) {
       throw new Error("GEMINI_API_KEY environment variable is required");
     }
@@ -25,12 +34,52 @@ function getAIClient(): GoogleGenAI {
   return aiClient;
 }
 
-// Supported models cascade based on task requirements
+// Modelo activo de Gemini
 const MODEL_CANDIDATES = [
-  "gemini-3.8-flash",
-  "gemini-flash-latest",
-  "gemini-3.1-flash-lite",
+  "gemini-3.8-flash"
 ];
+
+// Función para obtener la IP del cliente en Cloud Run
+function getClientIp(req: express.Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    const ipList = typeof forwarded === 'string' ? forwarded : forwarded[0];
+    return ipList.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
+// Control persistente de cuota en Firestore
+async function checkAndIncrementUsage(ip: string): Promise<{ allowed: boolean; remaining: number }> {
+  try {
+    const cleanIp = ip.replace(/[^a-zA-Z0-9]/g, "_");
+    const docRef = db.collection("demo_usage").doc(cleanIp);
+    const docSnap = await docRef.get();
+
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      const count = data?.count || 0;
+      if (count >= MAX_FREE_QUERIES) {
+        return { allowed: false, remaining: 0 };
+      }
+      await docRef.update({
+        count: FieldValue.increment(1),
+        lastQuery: FieldValue.serverTimestamp()
+      });
+      return { allowed: true, remaining: MAX_FREE_QUERIES - (count + 1) };
+    } else {
+      await docRef.set({
+        count: 1,
+        firstQuery: FieldValue.serverTimestamp(),
+        lastQuery: FieldValue.serverTimestamp()
+      });
+      return { allowed: true, remaining: MAX_FREE_QUERIES - 1 };
+    }
+  } catch (err) {
+    console.warn("Firestore usage check bypassed:", err);
+    return { allowed: true, remaining: 5 };
+  }
+}
 
 async function generateWithFallback(options: {
   contents: any;
@@ -59,7 +108,6 @@ async function generateWithFallback(options: {
     } catch (err: any) {
       console.warn(`Model ${model} failed: ${err?.message || err}`);
       lastError = err;
-      // Continue to next fallback model in the list
     }
   }
 
@@ -68,9 +116,10 @@ async function generateWithFallback(options: {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Health check endpoint
   app.get("/api/health", (req, res) => {
@@ -84,6 +133,19 @@ async function startServer() {
   // AI Chat endpoint
   app.post("/api/ai/chat", async (req, res) => {
     try {
+      const clientIp = getClientIp(req);
+      const usage = await checkAndIncrementUsage(clientIp);
+
+      if (!usage.allowed) {
+        const isEs = req.body.language === "es";
+        return res.json({
+          reply: isEs
+            ? "⚠️ **Límite de demostración alcanzado**: Has completado tus 5 consultas gratuitas en esta demo de SmartCRM AI. Contacta al equipo de Solvra para obtener acceso ilimitado."
+            : "⚠️ **Demo limit reached**: You have completed your 5 free queries on this SmartCRM AI demo. Contact Solvra team for unlimited access.",
+          model: "smartcrm-limit-engine"
+        });
+      }
+
       const { messages, context, language = "en" } = req.body;
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: "messages array is required" });
@@ -113,10 +175,20 @@ ${context ? JSON.stringify(context, null, 2) : "No specific leads selected."}
         return res.json({ reply: text, model: modelUsed });
       } catch (geminiError: any) {
         console.error("Gemini API error after fallbacks:", geminiError);
-        // Fallback intelligent simulation if all API quotas are exhausted
-        const isEs = language === "es";
-        const lastUserMessage = messages[messages.length - 1]?.text || "";
         
+        const errorStr = JSON.stringify(geminiError) || geminiError?.message || "";
+        const isEs = language === "es";
+
+        if (errorStr.includes("402") || errorStr.includes("RESOURCE_EXHAUSTED") || errorStr.includes("prepayment credits")) {
+          return res.json({
+            reply: isEs
+              ? "⚠️ **Servicio no disponible por falta de créditos**: La cuenta de AI Studio no tiene saldo prepago disponible. Por favor, revisa la facturación del proyecto."
+              : "⚠️ **Service unavailable due to depleted API credits**: Please check billing in Google AI Studio.",
+            model: "smartcrm-billing-error"
+          });
+        }
+
+        const lastUserMessage = messages[messages.length - 1]?.text || "";
         let fallbackReply = "";
         if (isEs) {
           fallbackReply = `📊 **Respuesta del Asistente SmartCRM**:\n\nHe analizado tu consulta sobre *" ${lastUserMessage.slice(0, 50)}... "*:\n\n1. **Estrategia Recomendada**: Segmenta a tus prospectos según el score de interacción (>75 puntos) y prioriza los que se encuentren en etapa de *Negociación*.\n2. **Siguiente Acción**: Envía un correo breve destacando el retorno de inversión y agenda una llamada de 15 minutos.\n3. **Plantilla Rápida**:\n> *"Hola [Nombre], estuve revisando cómo podemos acelerar sus resultados en [Empresa]. ¿Tienes 10 minutos este jueves para una breve demostración?"*\n\n*(Nota: Operando en modo optimizado de contingencia)*`;
@@ -134,7 +206,7 @@ ${context ? JSON.stringify(context, null, 2) : "No specific leads selected."}
     }
   });
 
-  // AI Lead Analysis endpoint (Deep Scoring & Pitch generation)
+  // AI Lead Analysis endpoint
   app.post("/api/ai/analyze-lead", async (req, res) => {
     try {
       const { lead, language = "en" } = req.body;
@@ -176,7 +248,6 @@ Respond ONLY with the raw JSON object, without markdown code fences or backticks
         });
 
         const raw = text?.trim() || "{}";
-        // Remove code block markdown if present
         const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
         parsedResult = JSON.parse(cleaned);
       } catch (aiErr) {
@@ -295,7 +366,7 @@ Respond ONLY with the raw JSON object.`;
     }
   });
 
-  // Vite middleware for development
+  // Serve static files in production
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -311,7 +382,7 @@ Respond ONLY with the raw JSON object.`;
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`SmartCRM AI Server running on http://localhost:${PORT}`);
+    console.log(`SmartCRM AI Server running on port ${PORT}`);
   });
 }
 
