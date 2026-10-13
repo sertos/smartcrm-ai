@@ -2,11 +2,11 @@ import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Users, Columns, Bot, BarChart3, LogOut, Cpu, DollarSign, Globe } from 'lucide-react';
+import { LayoutDashboard, Users, Columns, Bot, BarChart3, LogOut, Cpu, DollarSign, Globe, LogIn } from 'lucide-react';
 
 export default function Layout() {
   const { t, i18n } = useTranslation();
-  const { logout, user } = useAuth();
+  const { logout, user, loading, loginWithGoogle } = useAuth();
   const location = useLocation();
 
   const toggleLanguage = () => {
@@ -14,6 +14,51 @@ export default function Layout() {
     i18n.changeLanguage(nextLang);
   };
 
+  // 1. Estado de carga mientras Firebase verifica la sesión
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-500 to-accent-500 flex items-center justify-center animate-pulse">
+            <Cpu size={20} className="text-white" />
+          </div>
+          <p className="text-sm text-zinc-400 font-medium">Iniciando SmartCRM AI...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Si no hay usuario autenticado, renderiza la pantalla de Login con Google
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-500/10 rounded-full blur-[120px] pointer-events-none" />
+        
+        <div className="w-full max-w-md bg-zinc-900/80 border border-white/10 rounded-2xl p-8 backdrop-blur-xl relative z-10 text-center shadow-2xl">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-500 to-brand-500 flex items-center justify-center mx-auto mb-4 neon-border shadow-lg shadow-brand-500/20">
+            <Cpu size={24} className="text-white" />
+          </div>
+
+          <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400 mb-2">
+            SmartCRM AI
+          </h1>
+          <p className="text-sm text-zinc-400 mb-8">
+            Ingresa con tu cuenta corporativa para acceder a la demo.
+          </p>
+
+          <button
+            onClick={() => loginWithGoogle()}
+            className="w-full py-3.5 px-4 bg-white hover:bg-zinc-100 text-zinc-950 font-semibold rounded-xl flex items-center justify-center gap-3 transition shadow-lg hover:shadow-white/10"
+          >
+            <LogIn size={18} className="text-zinc-900" />
+            <span>Continuar con Google</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Renderizado habitual del Dashboard cuando el usuario SÍ está autenticado
   const navItems = [
     { name: t('dashboard'), path: '/app', icon: LayoutDashboard },
     { name: t('leads'), path: '/app/leads', icon: Users },
