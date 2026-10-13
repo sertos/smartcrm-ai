@@ -24,24 +24,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
       if (currentUser) {
-        // Enforce user document check/create
-        const userRef = doc(db, 'users', currentUser.uid);
         try {
+          const userRef = doc(db, 'users', currentUser.uid);
           const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
             await setDoc(userRef, {
               email: currentUser.email || '',
               name: currentUser.displayName || 'User',
-              language: 'en',
+              language: 'es',
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp()
             });
           }
         } catch (e) {
-          console.error("Firestore user creation or fetch failed: ", e);
+          console.error("Firestore user Sync bypassed: ", e);
         }
       }
+      
+      // Se asegura de marcar siempre loading como false
       setLoading(false);
     });
 
@@ -54,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
-      console.error(error);
+      console.error("Login popup error: ", error);
     }
   };
 
@@ -62,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signOut(auth);
     } catch (error) {
-      console.error(error);
+      console.error("Logout error: ", error);
     }
   };
 
