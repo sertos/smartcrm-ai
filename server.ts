@@ -36,7 +36,8 @@ function getAIClient(): GoogleGenAI {
 
 // Modelo activo de Gemini
 const MODEL_CANDIDATES = [
-  "gemini-3.8-flash"
+  "gemini-2.5-flash",
+  "gemini-2.5-pro"
 ];
 
 // Función para obtener la IP del cliente en Cloud Run
