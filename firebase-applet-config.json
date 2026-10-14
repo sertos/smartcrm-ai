@@ -3,7 +3,7 @@
   "appId": "1:190418962021:web:e7a7fd97a5e0f500ee288c",
   "apiKey": "AIzaSyDq0_nmtM0dcL0-DVRNwcOvLbcb57ghUx8",
   "authDomain": "vocaccion2.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-90e1d2de-e771-4ba0-aaa5-f766b76b9e82",
+  "firestoreDatabaseId": "(default)",
   "storageBucket": "vocaccion2.firebasestorage.app",
   "messagingSenderId": "190418962021",
   "measurementId": ""
