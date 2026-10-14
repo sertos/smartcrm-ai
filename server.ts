@@ -22,22 +22,16 @@ function getAIClient(): GoogleGenAI {
     if (!key) {
       throw new Error("GEMINI_API_KEY environment variable is required");
     }
-    aiClient = new GoogleGenAI({
-      apiKey: key,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
+    aiClient = new GoogleGenAI({ apiKey: key });
   }
   return aiClient;
 }
 
-// Modelo activo de Gemini
+// Modelos válidos para @google/genai con fallback progresivo
 const MODEL_CANDIDATES = [
   "gemini-2.5-flash",
-  "gemini-2.5-pro"
+  "gemini-1.5-flash",
+  "gemini-1.5-pro"
 ];
 
 // Función para obtener la IP del cliente en Cloud Run
@@ -103,7 +97,7 @@ async function generateWithFallback(options: {
         config,
       });
 
-      if (response.text) {
+      if (response?.text) {
         return { text: response.text, modelUsed: model };
       }
     } catch (err: any) {
@@ -367,7 +361,7 @@ Respond ONLY with the raw JSON object.`;
     }
   });
 
-  // Serve static files in production
+  // Serve static files in production (SIEMPRE AL FINAL)
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
