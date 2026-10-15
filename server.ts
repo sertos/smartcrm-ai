@@ -29,9 +29,9 @@ function getAIClient(): GoogleGenAI {
 
 // Modelos válidos para @google/genai con fallback progresivo
 const MODEL_CANDIDATES = [
-  "gemini-2.5-flash",
   "gemini-1.5-flash",
-  "gemini-1.5-pro"
+  "gemini-1.5-pro",
+  "gemini-2.0-flash"
 ];
 
 // Función para obtener la IP del cliente en Cloud Run
