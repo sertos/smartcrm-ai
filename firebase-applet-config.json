@@ -1,10 +1,10 @@
 {
-  "projectId": "vocaccion2",
-  "appId": "1:190418962021:web:e7a7fd97a5e0f500ee288c",
-  "apiKey": "AIzaSyDq0_nmtM0dcL0-DVRNwcOvLbcb57ghUx8",
+  "projectId": "solvra-demos-170ef",
+  "appId": "1:250460010674:web:32248e56b6d9700f8031ab",
+  "apiKey": ""AIzaSyAh6pE87LaXhR0trdDBT-t-9SzdoeEgaYg",
   "authDomain": "vocaccion2.firebaseapp.com",
   "firestoreDatabaseId": "(default)",
-  "storageBucket": "vocaccion2.firebasestorage.app",
-  "messagingSenderId": "190418962021",
-  "measurementId": ""
+  "storageBucket": "solvra-demos-170ef.firebasestorage.app",
+  "messagingSenderId": "250460010674",
+  "measurementId": "G-NM63S6M25T"
 }
